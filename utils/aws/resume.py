@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Resume all interrupted trainings in yolor/ dir including DDP trainings
+=======
+# Resume all interrupted trainings in yolov5/ dir including DDP trainings
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 # Usage: $ python utils/aws/resume.py
 
 import os
@@ -19,7 +23,11 @@ for last in path.rglob('*/**/last.pt'):
 
     # Load opt.yaml
     with open(last.parent.parent / 'opt.yaml') as f:
+<<<<<<< HEAD
         opt = yaml.load(f, Loader=yaml.SafeLoader)
+=======
+        opt = yaml.safe_load(f)
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
     # Get device count
     d = opt['device'].split(',')  # devices

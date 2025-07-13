@@ -1,7 +1,11 @@
 runtime: custom
 env: flex
 
+<<<<<<< HEAD
 service: yolorapp
+=======
+service: yolov5app
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
 liveness_check:
   initial_delay_sec: 600

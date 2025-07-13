@@ -16,19 +16,37 @@ def gsutil_getsize(url=''):
     return eval(s.split(' ')[0]) if len(s) else 0  # bytes
 
 
+<<<<<<< HEAD
 def attempt_download(file, repo='WongKinYiu/yolov7'):
     # Attempt file download if does not exist
     file = Path(str(file).strip().replace("'", '').lower())
+=======
+def attempt_download(file, repo='ultralytics/yolov5'):
+    # Attempt file download if does not exist
+    file = Path(str(file).strip().replace("'", ''))
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
     if not file.exists():
         try:
             response = requests.get(f'https://api.github.com/repos/{repo}/releases/latest').json()  # github api
+<<<<<<< HEAD
             assets = [x['name'] for x in response['assets']]  # release assets
             tag = response['tag_name']  # i.e. 'v1.0'
         except:  # fallback plan
             assets = ['yolov7.pt', 'yolov7-tiny.pt', 'yolov7x.pt', 'yolov7-d6.pt', 'yolov7-e6.pt', 
                       'yolov7-e6e.pt', 'yolov7-w6.pt']
             tag = subprocess.check_output('git tag', shell=True).decode().split()[-1]
+=======
+            assets = [x['name'] for x in response['assets']]  # release assets, i.e. ['yolov5s.pt', 'yolov5m.pt', ...]
+            tag = response['tag_name']  # i.e. 'v1.0'
+        except:  # fallback plan
+            assets = ['yolov5s.pt', 'yolov5m.pt', 'yolov5l.pt', 'yolov5x.pt',
+                      'yolov5s6.pt', 'yolov5m6.pt', 'yolov5l6.pt', 'yolov5x6.pt']
+            try:
+                tag = subprocess.check_output('git tag', shell=True, stderr=subprocess.STDOUT).decode().split()[-1]
+            except:
+                tag = 'v5.0'  # current release
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
         name = file.name
         if name in assets:
@@ -53,8 +71,13 @@ def attempt_download(file, repo='WongKinYiu/yolov7'):
                 return
 
 
+<<<<<<< HEAD
 def gdrive_download(id='', file='tmp.zip'):
     # Downloads a file from Google Drive. from yolov7.utils.google_utils import *; gdrive_download()
+=======
+def gdrive_download(id='16TiPfZj7htmTyhntwcZyEEAejOUxuT6m', file='tmp.zip'):
+    # Downloads a file from Google Drive. from yolov5.utils.google_utils import *; gdrive_download()
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     t = time.time()
     file = Path(file)
     cookie = Path('cookie')  # gdrive cookie

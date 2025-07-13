@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # YOLOR general utils
+=======
+# YOLOv5 general utils
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
 import glob
 import logging
@@ -9,6 +13,11 @@ import random
 import re
 import subprocess
 import time
+<<<<<<< HEAD
+=======
+from itertools import repeat
+from multiprocessing.pool import ThreadPool
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 from pathlib import Path
 
 import cv2
@@ -30,10 +39,17 @@ cv2.setNumThreads(0)  # prevent OpenCV from multithreading (incompatible with Py
 os.environ['NUMEXPR_MAX_THREADS'] = str(min(os.cpu_count(), 8))  # NumExpr max threads
 
 
+<<<<<<< HEAD
 def set_logging(rank=-1):
     logging.basicConfig(
         format="%(message)s",
         level=logging.INFO if rank in [-1, 0] else logging.WARN)
+=======
+def set_logging(rank=-1, verbose=True):
+    logging.basicConfig(
+        format="%(message)s",
+        level=logging.INFO if (verbose and rank in [-1, 0]) else logging.WARN)
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
 
 def init_seeds(seed=0):
@@ -59,6 +75,14 @@ def emojis(str=''):
     return str.encode().decode('ascii', 'ignore') if platform.system() == 'Windows' else str
 
 
+<<<<<<< HEAD
+=======
+def file_size(file):
+    # Return file size in MB
+    return Path(file).stat().st_size / 1e6
+
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 def check_online():
     # Check internet connectivity
     import socket
@@ -110,8 +134,13 @@ def check_requirements(requirements='requirements.txt', exclude=()):
             pkg.require(r)
         except Exception as e:  # DistributionNotFound or VersionConflict if requirements not met
             n += 1
+<<<<<<< HEAD
             print(f"{prefix} {e.req} not found and is required by YOLOR, attempting auto-update...")
             print(subprocess.check_output(f"pip install '{e.req}'", shell=True).decode())
+=======
+            print(f"{prefix} {r} not found and is required by YOLOv5, attempting auto-update...")
+            print(subprocess.check_output(f"pip install '{r}'", shell=True).decode())
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
     if n:  # if packages updated
         source = file.resolve() if 'file' in locals() else requirements
@@ -161,6 +190,7 @@ def check_dataset(dict):
         if not all(x.exists() for x in val):
             print('\nWARNING: Dataset not found, nonexistent paths: %s' % [str(x) for x in val if not x.exists()])
             if s and len(s):  # download script
+<<<<<<< HEAD
                 print('Downloading %s ...' % s)
                 if s.startswith('http') and s.endswith('.zip'):  # URL
                     f = Path(s).name  # filename
@@ -169,10 +199,50 @@ def check_dataset(dict):
                 else:  # bash script
                     r = os.system(s)
                 print('Dataset autodownload %s\n' % ('success' if r == 0 else 'failure'))  # analyze return value
+=======
+                if s.startswith('http') and s.endswith('.zip'):  # URL
+                    f = Path(s).name  # filename
+                    print(f'Downloading {s} ...')
+                    torch.hub.download_url_to_file(s, f)
+                    r = os.system(f'unzip -q {f} -d ../ && rm {f}')  # unzip
+                elif s.startswith('bash '):  # bash script
+                    print(f'Running {s} ...')
+                    r = os.system(s)
+                else:  # python script
+                    r = exec(s)  # return None
+                print('Dataset autodownload %s\n' % ('success' if r in (0, None) else 'failure'))  # print result
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
             else:
                 raise Exception('Dataset not found.')
 
 
+<<<<<<< HEAD
+=======
+def download(url, dir='.', threads=1):
+    # Multi-threaded file download and unzip function
+    def download_one(url, dir):
+        # Download 1 file
+        f = dir / Path(url).name  # filename
+        if not f.exists():
+            print(f'Downloading {url} to {f}...')
+            torch.hub.download_url_to_file(url, f, progress=True)  # download
+        if f.suffix in ('.zip', '.gz'):
+            print(f'Unzipping {f}...')
+            if f.suffix == '.zip':
+                os.system(f'unzip -qo {f} -d {dir} && rm {f}')  # unzip -quiet -overwrite
+            elif f.suffix == '.gz':
+                os.system(f'tar xfz {f} --directory {f.parent} && rm {f}')  # unzip
+
+    dir = Path(dir)
+    dir.mkdir(parents=True, exist_ok=True)  # make directory
+    if threads > 1:
+        ThreadPool(threads).imap(lambda x: download_one(*x), zip(url, repeat(dir)))  # multi-threaded
+    else:
+        for u in tuple(url) if isinstance(url, str) else url:
+            download_one(u, dir)
+
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 def make_divisible(x, divisor):
     # Returns x evenly divisible by divisor
     return math.ceil(x / divisor) * divisor
@@ -219,7 +289,11 @@ def labels_to_class_weights(labels, nc=80):
         return torch.Tensor()
 
     labels = np.concatenate(labels, 0)  # labels.shape = (866643, 5) for COCO
+<<<<<<< HEAD
     classes = labels[:, 0].astype(np.int32)  # labels = [class xywh]
+=======
+    classes = labels[:, 0].astype(np.int)  # labels = [class xywh]
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     weights = np.bincount(classes, minlength=nc)  # occurrences per class
 
     # Prepend gridpoint count (for uCE training)
@@ -234,7 +308,11 @@ def labels_to_class_weights(labels, nc=80):
 
 def labels_to_image_weights(labels, nc=80, class_weights=np.ones(80)):
     # Produces image weights based on class_weights and image contents
+<<<<<<< HEAD
     class_counts = np.array([np.bincount(x[:, 0].astype(np.int32), minlength=nc) for x in labels])
+=======
+    class_counts = np.array([np.bincount(x[:, 0].astype(np.int), minlength=nc) for x in labels])
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     image_weights = (class_weights.reshape(1, nc) * class_counts).sum(1)
     # index = random.choices(range(n), weights=image_weights, k=1)  # weight image sample
     return image_weights
@@ -272,13 +350,42 @@ def xywh2xyxy(x):
     return y
 
 
+<<<<<<< HEAD
 def xywhn2xyxy(x, w=640, h=640, padw=0, padh=0):
     # Convert nx4 boxes from [x, y, w, h] normalized to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
+=======
+def xywh2xyxy_export(cx,cy,w,h):
+    #This function is used while exporting ONNX models
+    # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
+    #y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
+    halfw = w/2
+    halfh = h/2
+    xmin = cx - halfw  # top left x
+    ymin = cy - halfh  # top left y
+    xmax = cx + halfw  # bottom right x
+    ymax = cy + halfh  # bottom right y
+    return torch.cat((xmin, ymin, xmax, ymax), 1)
+
+def xywhn2xyxy(x, w=640, h=640, padw=0, padh=0, kpt_label=False):
+    # Convert nx4 boxes from [x, y, w, h] normalized to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
+    # it does the same operation as above for the key-points
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
     y[:, 0] = w * (x[:, 0] - x[:, 2] / 2) + padw  # top left x
     y[:, 1] = h * (x[:, 1] - x[:, 3] / 2) + padh  # top left y
     y[:, 2] = w * (x[:, 0] + x[:, 2] / 2) + padw  # bottom right x
     y[:, 3] = h * (x[:, 1] + x[:, 3] / 2) + padh  # bottom right y
+<<<<<<< HEAD
+=======
+    if kpt_label:
+        num_kpts = (x.shape[1]-4)//2
+        for kpt in range(num_kpts):
+            for kpt_instance in range(y.shape[0]):
+                if y[kpt_instance, 2 * kpt + 4]!=0:
+                    y[kpt_instance, 2*kpt+4] = w * y[kpt_instance, 2*kpt+4] + padw
+                if y[kpt_instance, 2 * kpt + 1 + 4] !=0:
+                    y[kpt_instance, 2*kpt+1+4] = h * y[kpt_instance, 2*kpt+1+4] + padh
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     return y
 
 
@@ -310,19 +417,27 @@ def segments2boxes(segments):
 def resample_segments(segments, n=1000):
     # Up-sample an (n,2) segment
     for i, s in enumerate(segments):
+<<<<<<< HEAD
         s = np.concatenate((s, s[0:1, :]), axis=0)
+=======
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
         x = np.linspace(0, len(s) - 1, n)
         xp = np.arange(len(s))
         segments[i] = np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)]).reshape(2, -1).T  # segment xy
     return segments
 
 
+<<<<<<< HEAD
 def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
+=======
+def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None, kpt_label=False, step=2):
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     # Rescale coords (xyxy) from img1_shape to img0_shape
     if ratio_pad is None:  # calculate from img0_shape
         gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # gain  = old / new
         pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2  # wh padding
     else:
+<<<<<<< HEAD
         gain = ratio_pad[0][0]
         pad = ratio_pad[1]
 
@@ -339,6 +454,33 @@ def clip_coords(boxes, img_shape):
     boxes[:, 1].clamp_(0, img_shape[0])  # y1
     boxes[:, 2].clamp_(0, img_shape[1])  # x2
     boxes[:, 3].clamp_(0, img_shape[0])  # y2
+=======
+        gain = ratio_pad[0]
+        pad = ratio_pad[1]
+    if isinstance(gain, (list, tuple)):
+        gain = gain[0]
+    if not kpt_label:
+        coords[:, [0, 2]] -= pad[0]  # x padding
+        coords[:, [1, 3]] -= pad[1]  # y padding
+        coords[:, [0, 2]] /= gain
+        coords[:, [1, 3]] /= gain
+        clip_coords(coords[0:4], img0_shape)
+        #coords[:, 0:4] = coords[:, 0:4].round()
+    else:
+        coords[:, 0::step] -= pad[0]  # x padding
+        coords[:, 1::step] -= pad[1]  # y padding
+        coords[:, 0::step] /= gain
+        coords[:, 1::step] /= gain
+        clip_coords(coords, img0_shape, step=step)
+        #coords = coords.round()
+    return coords
+
+
+def clip_coords(boxes, img_shape, step=2):
+    # Clip bounding xyxy bounding boxes to image shape (height, width)
+    boxes[:, 0::step].clamp_(0, img_shape[1])  # x1
+    boxes[:, 1::step].clamp_(0, img_shape[0])  # y1
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
 
 def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7):
@@ -365,7 +507,10 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
     union = w1 * h1 + w2 * h2 - inter + eps
 
     iou = inter / union
+<<<<<<< HEAD
 
+=======
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     if GIoU or DIoU or CIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
@@ -376,7 +521,11 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
             if DIoU:
                 return iou - rho2 / c2  # DIoU
             elif CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
+<<<<<<< HEAD
                 v = (4 / math.pi ** 2) * torch.pow(torch.atan(w2 / (h2 + eps)) - torch.atan(w1 / (h1 + eps)), 2)
+=======
+                v = (4 / math.pi ** 2) * torch.pow(torch.atan(w2 / h2) - torch.atan(w1 / h1), 2)
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
                 with torch.no_grad():
                     alpha = v / (v - iou + (1 + eps))
                 return iou - (rho2 / c2 + v * alpha)  # CIoU
@@ -387,6 +536,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
         return iou  # IoU
 
 
+<<<<<<< HEAD
 
 
 def bbox_alpha_iou(box1, box2, x1y1x2y2=False, GIoU=False, DIoU=False, CIoU=False, alpha=2, eps=1e-9):
@@ -441,6 +591,8 @@ def bbox_alpha_iou(box1, box2, x1y1x2y2=False, GIoU=False, DIoU=False, CIoU=Fals
         return iou # torch.log(iou+eps) or iou
 
 
+=======
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 def box_iou(box1, box2):
     # https://github.com/pytorch/vision/blob/master/torchvision/ops/boxes.py
     """
@@ -474,6 +626,7 @@ def wh_iou(wh1, wh2):
     return inter / (wh1.prod(2) + wh2.prod(2) - inter)  # iou = inter / (area1 + area2 - inter)
 
 
+<<<<<<< HEAD
 def box_giou(box1, box2):
     """
     Return generalized intersection-over-union (Jaccard index) between two sets of boxes.
@@ -701,6 +854,9 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
 
 
 def non_max_suppression_kpt(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
+=======
+def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
                         labels=(), kpt_label=False, nc=None, nkpt=None):
     """Runs Non-Maximum Suppression (NMS) on inference results
 
@@ -797,6 +953,41 @@ def non_max_suppression_kpt(prediction, conf_thres=0.25, iou_thres=0.45, classes
     return output
 
 
+<<<<<<< HEAD
+=======
+def non_max_suppression_export(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
+                        kpt_label=True, nc=None, labels=()):
+    """Runs Non-Maximum Suppression (NMS) on inference results
+
+    Returns:
+         list of detections, on (n,6) tensor per image [xyxy, conf, cls]
+    """
+    if nc is None:
+        nc = prediction.shape[2] - 5  if not kpt_label else prediction.shape[2] - 56 # number of classes
+
+    min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
+    xc = prediction[..., 4] > conf_thres  # candidates
+    output = [torch.zeros((0, 57), device=prediction.device)] * prediction.shape[0]
+    for xi, x in enumerate(prediction):  # image index, image inference
+        x = x[xc[xi]]  # confidence
+        # Compute conf
+        cx, cy, w, h = x[:,0:1], x[:,1:2], x[:,2:3], x[:,3:4]
+        obj_conf = x[:, 4:5]
+        cls_conf = x[:, 5:5+nc]
+        kpts = x[:, 6:]
+        cls_conf = obj_conf * cls_conf  # conf = obj_conf * cls_conf
+        # Box (center x, center y, width, height) to (x1, y1, x2, y2)
+        box = xywh2xyxy_export(cx, cy, w, h)
+        conf, j = cls_conf.max(1, keepdim=True)
+        x = torch.cat((box, conf, j.float(), kpts), 1)[conf.view(-1) > conf_thres]
+        c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
+        boxes, scores = x[:, :4] +c , x[:, 4]  # boxes (offset by class), scores
+        i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
+        output[xi] = x[i]
+    return output
+
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 def strip_optimizer(f='best.pt', s=''):  # from utils.general import *; strip_optimizer()
     # Strip optimizer from 'f' to finalize training, optionally save as 's'
     x = torch.load(f, map_location=torch.device('cpu'))
@@ -838,14 +1029,22 @@ def print_mutation(hyp, results, yaml_file='hyp_evolved.yaml', bucket=''):
         results = tuple(x[0, :7])
         c = '%10.4g' * len(results) % results  # results (P, R, mAP@0.5, mAP@0.5:0.95, val_losses x 3)
         f.write('# Hyperparameter Evolution Results\n# Generations: %g\n# Metrics: ' % len(x) + c + '\n\n')
+<<<<<<< HEAD
         yaml.dump(hyp, f, sort_keys=False)
+=======
+        yaml.safe_dump(hyp, f, sort_keys=False)
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
     if bucket:
         os.system('gsutil cp evolve.txt %s gs://%s' % (yaml_file, bucket))  # upload
 
 
 def apply_classifier(x, model, img, im0):
+<<<<<<< HEAD
     # applies a second stage classifier to yolo outputs
+=======
+    # Apply a second stage classifier to yolo outputs
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     im0 = [im0] if isinstance(im0, np.ndarray) else im0
     for i, d in enumerate(x):  # per image
         if d is not None and len(d):
@@ -879,14 +1078,44 @@ def apply_classifier(x, model, img, im0):
     return x
 
 
+<<<<<<< HEAD
 def increment_path(path, exist_ok=True, sep=''):
     # Increment path, i.e. runs/exp --> runs/exp{sep}0, runs/exp{sep}1 etc.
     path = Path(path)  # os-agnostic
     if (path.exists() and exist_ok) or (not path.exists()):
         return str(path)
     else:
+=======
+def save_one_box(xyxy, im, file='image.jpg', gain=1.02, pad=10, square=False, BGR=False):
+    # Save an image crop as {file} with crop size multiplied by {gain} and padded by {pad} pixels
+    xyxy = torch.tensor(xyxy).view(-1, 4)
+    b = xyxy2xywh(xyxy)  # boxes
+    if square:
+        b[:, 2:] = b[:, 2:].max(1)[0].unsqueeze(1)  # attempt rectangle to square
+    b[:, 2:] = b[:, 2:] * gain + pad  # box wh * gain + pad
+    xyxy = xywh2xyxy(b).long()
+    clip_coords(xyxy, im.shape)
+    crop = im[int(xyxy[0, 1]):int(xyxy[0, 3]), int(xyxy[0, 0]):int(xyxy[0, 2])]
+    cv2.imwrite(str(increment_path(file, mkdir=True).with_suffix('.jpg')), crop if BGR else crop[..., ::-1])
+
+
+def increment_path(path, exist_ok=False, sep='', mkdir=False):
+    # Increment file or directory path, i.e. runs/exp --> runs/exp{sep}2, runs/exp{sep}3, ... etc.
+    path = Path(path)  # os-agnostic
+    if path.exists() and not exist_ok:
+        suffix = path.suffix
+        path = path.with_suffix('')
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
         dirs = glob.glob(f"{path}{sep}*")  # similar paths
         matches = [re.search(rf"%s{sep}(\d+)" % path.stem, d) for d in dirs]
         i = [int(m.groups()[0]) for m in matches if m]  # indices
         n = max(i) + 1 if i else 2  # increment number
+<<<<<<< HEAD
         return f"{path}{sep}{n}"  # update path
+=======
+        path = Path(f"{path}{sep}{n}{suffix}")  # update path
+    dir = path if path.suffix == '' else path.parent  # directory
+    if not dir.exists() and mkdir:
+        dir.mkdir(parents=True, exist_ok=True)  # make directory
+    return path
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9

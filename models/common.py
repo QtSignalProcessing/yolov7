@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+# This file contains modules common to various models
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 import math
 from copy import copy
 from pathlib import Path
@@ -7,12 +12,16 @@ import pandas as pd
 import requests
 import torch
 import torch.nn as nn
+<<<<<<< HEAD
 import torch.nn.functional as F
 from torchvision.ops import DeformConv2d
+=======
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 from PIL import Image
 from torch.cuda import amp
 
 from utils.datasets import letterbox
+<<<<<<< HEAD
 from utils.general import non_max_suppression, make_divisible, scale_coords, increment_path, xyxy2xywh
 from utils.plots import color_list, plot_one_box
 from utils.torch_utils import time_synchronized
@@ -20,6 +29,13 @@ from utils.torch_utils import time_synchronized
 
 ##### basic ####
 
+=======
+from utils.general import non_max_suppression, non_max_suppression_export, make_divisible, scale_coords, increment_path, xyxy2xywh, save_one_box
+from utils.plots import colors, plot_one_box
+from utils.torch_utils import time_synchronized
+
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 def autopad(k, p=None):  # kernel, padding
     # Pad to 'same'
     if p is None:
@@ -27,6 +43,7 @@ def autopad(k, p=None):  # kernel, padding
     return p
 
 
+<<<<<<< HEAD
 class MP(nn.Module):
     def __init__(self, k=2):
         super(MP, self).__init__()
@@ -43,6 +60,28 @@ class SP(nn.Module):
 
     def forward(self, x):
         return self.m(x)
+=======
+class ImplicitA(nn.Module):
+    def __init__(self, channel):
+        super(ImplicitA, self).__init__()
+        self.channel = channel
+        self.implicit = nn.Parameter(torch.zeros(1, channel, 1, 1))
+        nn.init.normal_(self.implicit, std=.02)
+
+    def forward(self, x):
+        return self.implicit.expand_as(x) + x
+
+
+class ImplicitM(nn.Module):
+    def __init__(self, channel):
+        super(ImplicitM, self).__init__()
+        self.channel = channel
+        self.implicit = nn.Parameter(torch.ones(1, channel, 1, 1))
+        nn.init.normal_(self.implicit, mean=1., std=.02)
+
+    def forward(self, x):
+        return self.implicit.expand_as(x) * x
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     
     
 class ReOrg(nn.Module):
@@ -53,6 +92,7 @@ class ReOrg(nn.Module):
         return torch.cat([x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]], 1)
 
 
+<<<<<<< HEAD
 class Concat(nn.Module):
     def __init__(self, dimension=1):
         super(Concat, self).__init__()
@@ -94,6 +134,11 @@ class Foldcut(nn.Module):
     def forward(self, x):
         x1, x2 = x.chunk(2, self.d)
         return x1+x2
+=======
+def DWConv(c1, c2, k=1, s=1, act=True):
+    # Depthwise convolution
+    return Conv(c1, c2, k, s, g=math.gcd(c1, c2), act=act)
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
 
 class Conv(nn.Module):
@@ -102,13 +147,21 @@ class Conv(nn.Module):
         super(Conv, self).__init__()
         self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p), groups=g, bias=False)
         self.bn = nn.BatchNorm2d(c2)
+<<<<<<< HEAD
         self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
+=======
+        if act != "ReLU":
+            self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
+        else:
+            self.act = nn.ReLU(inplace=True)
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
     def forward(self, x):
         return self.act(self.bn(self.conv(x)))
 
     def fuseforward(self, x):
         return self.act(self.conv(x))
+<<<<<<< HEAD
     
 
 class RobustConv(nn.Module):
@@ -742,6 +795,9 @@ class RepResXCSPC(ResXCSPC):
 
 
 ##### transformer #####
+=======
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
 class TransformerLayer(nn.Module):
     # Transformer layer https://arxiv.org/abs/2010.11929 (LayerNorm layers removed for better performance)
@@ -788,15 +844,181 @@ class TransformerBlock(nn.Module):
         x = x.reshape(b, self.c2, w, h)
         return x
 
+<<<<<<< HEAD
 ##### end of transformer #####
 
 
 ##### yolov5 #####
+=======
+
+class Bottleneck(nn.Module):
+    # Standard bottleneck
+    def __init__(self, c1, c2, shortcut=True, g=1, e=0.5, act=True):  # ch_in, ch_out, shortcut, groups, expansion
+        super(Bottleneck, self).__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1, act=act)
+        self.cv2 = Conv(c_, c2, 3, 1, g=g, act=act)
+        self.add = shortcut and c1 == c2
+
+    def forward(self, x):
+        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
+
+class BottleneckCSP(nn.Module):
+    # CSP Bottleneck https://github.com/WongKinYiu/CrossStagePartialNetworks
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super(BottleneckCSP, self).__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = nn.Conv2d(c1, c_, 1, 1, bias=False)
+        self.cv3 = nn.Conv2d(c_, c_, 1, 1, bias=False)
+        self.cv4 = Conv(2 * c_, c2, 1, 1)
+        self.bn = nn.BatchNorm2d(2 * c_)  # applied to cat(cv2, cv3)
+        self.act = nn.SiLU()
+        self.m = nn.Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
+
+    def forward(self, x):
+        y1 = self.cv3(self.m(self.cv1(x)))
+        y2 = self.cv2(x)
+        return self.cv4(self.act(self.bn(torch.cat((y1, y2), dim=1))))
+
+
+class BottleneckCSPF(nn.Module):
+    # CSP Bottleneck https://github.com/WongKinYiu/CrossStagePartialNetworks
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super(BottleneckCSPF, self).__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = nn.Conv2d(c1, c_, 1, 1, bias=False)
+        #self.cv3 = nn.Conv2d(c_, c_, 1, 1, bias=False)
+        self.cv4 = Conv(2 * c_, c2, 1, 1)
+        self.bn = nn.BatchNorm2d(2 * c_)  # applied to cat(cv2, cv3)
+        self.act = nn.SiLU()
+        self.m = nn.Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
+
+    def forward(self, x):
+        y1 = self.m(self.cv1(x))
+        y2 = self.cv2(x)
+        return self.cv4(self.act(self.bn(torch.cat((y1, y2), dim=1))))
+
+
+class BottleneckCSP2(nn.Module):
+    # CSP Bottleneck https://github.com/WongKinYiu/CrossStagePartialNetworks
+    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super(BottleneckCSP2, self).__init__()
+        c_ = int(c2)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = nn.Conv2d(c_, c_, 1, 1, bias=False)
+        self.cv3 = Conv(2 * c_, c2, 1, 1)
+        self.bn = nn.BatchNorm2d(2 * c_) 
+        self.act = nn.SiLU()
+        self.m = nn.Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
+
+    def forward(self, x):
+        x1 = self.cv1(x)
+        y1 = self.m(x1)
+        y2 = self.cv2(x1)
+        return self.cv3(self.act(self.bn(torch.cat((y1, y2), dim=1))))
+
+
+class C3(nn.Module):
+    # CSP Bottleneck with 3 convolutions
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5, act=True):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super(C3, self).__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1, act=act)
+        self.cv2 = Conv(c1, c_, 1, 1, act=act)
+        self.cv3 = Conv(2 * c_, c2, 1, act=act)  # act=FReLU(c2)
+        self.m = nn.Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0, act=act) for _ in range(n)])
+        # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
+
+    def forward(self, x):
+        return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
+
+
+class C3TR(C3):
+    # C3 module with TransformerBlock()
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
+        super().__init__(c1, c2, n, shortcut, g, e)
+        c_ = int(c2 * e)
+        self.m = TransformerBlock(c_, c_, 4, n)
+
+
+class SPP(nn.Module):
+    # Spatial pyramid pooling layer used in YOLOv3-SPP
+    def __init__(self, c1, c2, k=(3, 3, 3)):
+        print(k)
+        super(SPP, self).__init__()
+        c_ = c1 // 2  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c_ * (len(k) + 1), c2, 1, 1)
+        num_3x3_maxpool = []
+        max_pool_module_list = []
+        for pool_kernel in k:
+            assert (pool_kernel-3)%2==0; "Required Kernel size cannot be implemented with kernel_size of 3"
+            num_3x3_maxpool = 1 + (pool_kernel-3)//2
+            max_pool_module_list.append(nn.Sequential(*num_3x3_maxpool*[nn.MaxPool2d(kernel_size=3, stride=1, padding=1)]))
+            #max_pool_module_list[-1] = nn.ModuleList(max_pool_module_list[-1])
+        self.m = nn.ModuleList(max_pool_module_list)
+
+        #self.m = nn.ModuleList([nn.MaxPool2d(kernel_size=x, stride=1, padding=x // 2) for x in k])
+
+
+    def forward(self, x):
+        x = self.cv1(x)
+        return self.cv2(torch.cat([x] + [m(x) for m in self.m], 1))
+
+
+class SPPCSP(nn.Module):
+    # CSP SPP https://github.com/WongKinYiu/CrossStagePartialNetworks
+    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5, k=(5, 9, 13)):
+        super(SPPCSP, self).__init__()
+        c_ = int(2 * c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = nn.Conv2d(c1, c_, 1, 1, bias=False)
+        self.cv3 = Conv(c_, c_, 3, 1)
+        self.cv4 = Conv(c_, c_, 1, 1)
+        self.m = nn.ModuleList([nn.MaxPool2d(kernel_size=x, stride=1, padding=x // 2) for x in k])
+        self.cv5 = Conv(4 * c_, c_, 1, 1)
+        self.cv6 = Conv(c_, c_, 3, 1)
+        self.bn = nn.BatchNorm2d(2 * c_) 
+        self.act = nn.SiLU()
+        self.cv7 = Conv(2 * c_, c2, 1, 1)
+
+    def forward(self, x):
+        x1 = self.cv4(self.cv3(self.cv1(x)))
+        y1 = self.cv6(self.cv5(torch.cat([x1] + [m(x1) for m in self.m], 1)))
+        y2 = self.cv2(x)
+        return self.cv7(self.act(self.bn(torch.cat((y1, y2), dim=1))))
+
+
+class SPPCSPC(nn.Module):
+    # CSP SPP https://github.com/WongKinYiu/CrossStagePartialNetworks
+    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5, k=(5, 9, 13)):
+        super(SPPCSPC, self).__init__()
+        c_ = int(2 * c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c1, c_, 1, 1)
+        self.cv3 = Conv(c_, c_, 3, 1)
+        self.cv4 = Conv(c_, c_, 1, 1)
+        self.m = nn.ModuleList([nn.MaxPool2d(kernel_size=x, stride=1, padding=x // 2) for x in k])
+        self.cv5 = Conv(4 * c_, c_, 1, 1)
+        self.cv6 = Conv(c_, c_, 3, 1)
+        self.cv7 = Conv(2 * c_, c2, 1, 1)
+
+    def forward(self, x):
+        x1 = self.cv4(self.cv3(self.cv1(x)))
+        y1 = self.cv6(self.cv5(torch.cat([x1] + [m(x1) for m in self.m], 1)))
+        y2 = self.cv2(x)
+        return self.cv7(torch.cat((y1, y2), dim=1))
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
 class Focus(nn.Module):
     # Focus wh information into c-space
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):  # ch_in, ch_out, kernel, stride, padding, groups
         super(Focus, self).__init__()
+<<<<<<< HEAD
         self.conv = Conv(c1 * 4, c2, k, s, p, g, act)
         # self.contract = Contract(gain=2)
 
@@ -821,6 +1043,38 @@ class SPPF(nn.Module):
         return self.cv2(torch.cat([x, y1, y2, self.m(y2)], 1))
     
     
+=======
+        self.contract = Contract(gain=2)
+        self.conv = Conv(c1 * 4, c2, k, s, p, g, act)
+
+    def forward(self, x):  # x(b,c,w,h) -> y(b,4c,w/2,h/2)
+        if hasattr(self, "contract"):
+            x = self.contract(x)
+        elif hasattr(self, "conv_slice"):
+            x = self.conv_slice(x)
+        else:
+            x = torch.cat([x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]], 1)
+        return self.conv(x)
+
+class ConvFocus(nn.Module):
+    # Focus wh information into c-space
+    def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):  # ch_in, ch_out, kernel, stride, padding, groups
+        super(ConvFocus, self).__init__()
+        slice_kernel = 3
+        slice_stride = 2
+        self.conv_slice = Conv(c1, c1*4, slice_kernel, slice_stride, p, g, act)
+        self.conv = Conv(c1 * 4, c2, k, s, p, g, act)
+
+    def forward(self, x):  # x(b,c,w,h) -> y(b,4c,w/2,h/2)
+        if hasattr(self, "conv_slice"):
+            x = self.conv_slice(x)
+        else:
+            x = torch.cat([x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]], 1)
+        x = self.conv(x)
+        return x
+
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 class Contract(nn.Module):
     # Contract width-height into channels, i.e. x(1,64,80,80) to x(1,256,40,40)
     def __init__(self, gain=2):
@@ -849,6 +1103,7 @@ class Expand(nn.Module):
         return x.view(N, C // s ** 2, H * s, W * s)  # x(1,16,160,160)
 
 
+<<<<<<< HEAD
 class NMS(nn.Module):
     # Non-Maximum Suppression (NMS) module
     conf = 0.25  # confidence threshold
@@ -860,6 +1115,45 @@ class NMS(nn.Module):
 
     def forward(self, x):
         return non_max_suppression(x[0], conf_thres=self.conf, iou_thres=self.iou, classes=self.classes)
+=======
+class Concat(nn.Module):
+    # Concatenate a list of tensors along dimension
+    def __init__(self, dimension=1):
+        super(Concat, self).__init__()
+        self.d = dimension
+
+    def forward(self, x):
+        return torch.cat(x, self.d)
+
+
+class NMS(nn.Module):
+    # Non-Maximum Suppression (NMS) module
+    iou = 0.45  # IoU threshold
+    classes = None  # (optional list) filter by class
+
+    def __init__(self, conf=0.25, kpt_label=False):
+        super(NMS, self).__init__()
+        self.conf=conf
+        self.kpt_label = kpt_label
+
+
+    def forward(self, x):
+        return non_max_suppression(x[0], conf_thres=self.conf, iou_thres=self.iou, classes=self.classes, kpt_label=self.kpt_label)
+
+class NMS_Export(nn.Module):
+    # Non-Maximum Suppression (NMS) module used while exporting ONNX model
+    iou = 0.45  # IoU threshold
+    classes = None  # (optional list) filter by class
+
+    def __init__(self, conf=0.001, kpt_label=False):
+        super(NMS_Export, self).__init__()
+        self.conf = conf
+        self.kpt_label = kpt_label
+
+    def forward(self, x):
+        return non_max_suppression_export(x[0], conf_thres=self.conf, iou_thres=self.iou, classes=self.classes, kpt_label=self.kpt_label)
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
 
 class autoShape(nn.Module):
@@ -879,7 +1173,11 @@ class autoShape(nn.Module):
     @torch.no_grad()
     def forward(self, imgs, size=640, augment=False, profile=False):
         # Inference from various sources. For height=640, width=1280, RGB images example inputs are:
+<<<<<<< HEAD
         #   filename:   imgs = 'data/samples/zidane.jpg'
+=======
+        #   filename:   imgs = 'data/images/zidane.jpg'
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
         #   URI:             = 'https://github.com/ultralytics/yolov5/releases/download/v1.0/zidane.jpg'
         #   OpenCV:          = cv2.imread('image.jpg')[:,:,::-1]  # HWC BGR to RGB x(640,1280,3)
         #   PIL:             = Image.open('image.jpg')  # HWC x(640,1280,3)
@@ -910,7 +1208,11 @@ class autoShape(nn.Module):
             shape0.append(s)  # image shape
             g = (size / max(s))  # gain
             shape1.append([y * g for y in s])
+<<<<<<< HEAD
             imgs[i] = im  # update
+=======
+            imgs[i] = im if im.data.contiguous else np.ascontiguousarray(im)  # update
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
         shape1 = [make_divisible(x, int(self.stride.max())) for x in np.stack(shape1, 0).max(0)]  # inference shape
         x = [letterbox(im, new_shape=shape1, auto=False)[0] for im in imgs]  # pad
         x = np.stack(x, 0) if n > 1 else x[0][None]  # stack
@@ -950,14 +1252,21 @@ class Detections:
         self.t = tuple((times[i + 1] - times[i]) * 1000 / self.n for i in range(3))  # timestamps (ms)
         self.s = shape  # inference BCHW shape
 
+<<<<<<< HEAD
     def display(self, pprint=False, show=False, save=False, render=False, save_dir=''):
         colors = color_list()
         for i, (img, pred) in enumerate(zip(self.imgs, self.pred)):
             str = f'image {i + 1}/{len(self.pred)}: {img.shape[0]}x{img.shape[1]} '
+=======
+    def display(self, pprint=False, show=False, save=False, crop=False, render=False, save_dir=Path('')):
+        for i, (im, pred) in enumerate(zip(self.imgs, self.pred)):
+            str = f'image {i + 1}/{len(self.pred)}: {im.shape[0]}x{im.shape[1]} '
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
             if pred is not None:
                 for c in pred[:, -1].unique():
                     n = (pred[:, -1] == c).sum()  # detections per class
                     str += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string
+<<<<<<< HEAD
                 if show or save or render:
                     for *box, conf, cls in pred:  # xyxy, confidence, class
                         label = f'{self.names[int(cls)]} {conf:.2f}'
@@ -973,6 +1282,27 @@ class Detections:
                 print(f"{'Saved' * (i == 0)} {f}", end=',' if i < self.n - 1 else f' to {save_dir}\n')
             if render:
                 self.imgs[i] = np.asarray(img)
+=======
+                if show or save or render or crop:
+                    for *box, conf, cls in pred:  # xyxy, confidence, class
+                        label = f'{self.names[int(cls)]} {conf:.2f}'
+                        if crop:
+                            save_one_box(box, im, file=save_dir / 'crops' / self.names[int(cls)] / self.files[i])
+                        else:  # all others
+                            plot_one_box(box, im, label=label, color=colors(cls))
+
+            im = Image.fromarray(im.astype(np.uint8)) if isinstance(im, np.ndarray) else im  # from np
+            if pprint:
+                print(str.rstrip(', '))
+            if show:
+                im.show(self.files[i])  # show
+            if save:
+                f = self.files[i]
+                im.save(save_dir / f)  # save
+                print(f"{'Saved' * (i == 0)} {f}", end=',' if i < self.n - 1 else f' to {save_dir}\n')
+            if render:
+                self.imgs[i] = np.asarray(im)
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
 
     def print(self):
         self.display(pprint=True)  # print results
@@ -982,10 +1312,21 @@ class Detections:
         self.display(show=True)  # show results
 
     def save(self, save_dir='runs/hub/exp'):
+<<<<<<< HEAD
         save_dir = increment_path(save_dir, exist_ok=save_dir != 'runs/hub/exp')  # increment save_dir
         Path(save_dir).mkdir(parents=True, exist_ok=True)
         self.display(save=True, save_dir=save_dir)  # save results
 
+=======
+        save_dir = increment_path(save_dir, exist_ok=save_dir != 'runs/hub/exp', mkdir=True)  # increment save_dir
+        self.display(save=True, save_dir=save_dir)  # save results
+
+    def crop(self, save_dir='runs/hub/exp'):
+        save_dir = increment_path(save_dir, exist_ok=save_dir != 'runs/hub/exp', mkdir=True)  # increment save_dir
+        self.display(crop=True, save_dir=save_dir)  # crop results
+        print(f'Saved results to {save_dir}\n')
+
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
     def render(self):
         self.display(render=True)  # render results
         return self.imgs
@@ -1023,6 +1364,7 @@ class Classify(nn.Module):
     def forward(self, x):
         z = torch.cat([self.aap(y) for y in (x if isinstance(x, list) else [x])], 1)  # cat if list
         return self.flat(self.conv(z))  # flatten to x(b,c2)
+<<<<<<< HEAD
 
 ##### end of yolov5 ######
 
@@ -2017,3 +2359,5 @@ class ST2CSPC(nn.Module):
         return self.cv4(torch.cat((y1, y2), dim=1))
 
 ##### end of swin transformer v2 #####   
+=======
+>>>>>>> cad7acac832fcd4a9c2e09e773050a57761e22b9
